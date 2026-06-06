@@ -8,31 +8,41 @@
 </head>
 <body>
 
-<div class="container">
+<div class="container animate-fade-in">
   <div class="header-actions">
     <h1>🏸 Tournament Manager Pro</h1>
-    <button class="btn-secondary" onclick="toggleTheme()">🌓 Theme</button>
+    <button class="btn-secondary" onclick="toggleTheme()">🌓 Toggle Light Mode</button>
   </div>
 
-  <div id="setup">
-    <div class="toggle-group">
-      <button id="btnSingles" class="mode-btn active" onclick="setTournamentMode('singles')">Singles Mode</button>
-      <button id="btnDoubles" class="mode-btn" onclick="setTournamentMode('doubles')">Doubles Mode</button>
+  <div id="setup" class="animate-slide-up">
+    <div class="input-card" style="margin-bottom:15px;">
+      <div style="display:flex; align-items:center;">
+        <label>Tournament Name</label>
+        <span class="tooltip-container">
+          <span class="info-icon">ⓘ</span>
+          <span class="tooltip-text">The official title for this tournament. It wraps beautifully into your final screenshot-ready summary card.</span>
+        </span>
+      </div>
+      <input type="text" id="txtTournamentName" value="Championship Open">
     </div>
-
+    
     <div class="toggle-group" style="margin-bottom: 25px;">
       <button id="btnRandom" class="mode-btn active" onclick="setGroupingMode('random')">Random Allocation</button>
       <button id="btnCustom" class="mode-btn" onclick="setGroupingMode('custom')">Custom Allocation</button>
+      <span class="tooltip-container" style="align-self: center;">
+        <span class="info-icon">ⓘ</span>
+        <span class="tooltip-text">Random: Splits 8 entries evenly and builds balanced timelines automatically. Custom: Lets you manually pick group slots and design your own matching configurations.</span>
+      </span>
     </div>
 
     <div id="inputs"></div>
     
     <div class="center" id="setupActionsBlock">
-      <button id="mainSetupBtn" onclick="processSetupStage()" style="font-size: 1rem; padding: 12px 28px;"></button>
+      <button id="mainSetupBtn" onclick="processSetupStage()" style="font-size: 1rem; padding: 12px 28px; width:100%; max-width:320px;"></button>
     </div>
   </div>
 
-  <div id="customMatchmakingWrapper" class="card hidden">
+  <div id="customMatchmakingWrapper" class="card hidden animate-slide-up">
     <h2>🛠️ Configure Custom Match Schedules</h2>
     <p class="center" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">
       Manually select opponents for each match slot below.
@@ -52,68 +62,67 @@
     </div>
   </div>
 
-  <div id="main" class="hidden">
-    <div style="display:flex; justify-content: space-between; margin-bottom: 15px;">
-      <button class="btn-secondary" onclick="location.reload()">🔄 Reset</button>
+  <div id="main" class="hidden animate-fade-in">
+    <div class="control-action-bar">
+      <button class="btn-secondary" id="btnUndo" onclick="undoLastAction()" disabled>↩️ Undo Match</button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-secondary" onclick="resetTournamentKeepPlayers()">🔄 Reset Scores</button>
+        <button class="btn-secondary" onclick="clearFullTournamentData()">❌ Clear All</button>
+      </div>
     </div>
 
-    <div class="grid-tables" id="schedulesContainer">
-      <div class="card">
-        <h2 style="color: var(--primary-color); text-align: left;">📋 Court 1 (Group A Schedule)</h2>
+    <div class="card dashboard-card animate-slide-up">
+      <div style="display:flex; align-items:center; margin-bottom:12px;">
+        <h2 id="dashTitle" style="text-align:left; margin:0; color:var(--primary-color);">🏆 Dashboard Summary</h2>
+        <span class="tooltip-container">
+          <span class="info-icon">ⓘ</span>
+          <span class="tooltip-text">Tracks real-time tournament statistics. Leader is computed dynamically based on current highest point value standings.</span>
+        </span>
+      </div>
+      <div class="dashboard-metrics-grid">
+        <div class="metric-block"><span class="metric-label">Players Enrolled</span><span class="metric-value" id="dashPlayers">8 Players</span></div>
+        <div class="metric-block"><span class="metric-label">Matches Played</span><span class="metric-value" id="dashPlayed">0 / 12</span></div>
+        <div class="metric-block"><span class="metric-label">Current Leader</span><span class="metric-value" id="dashLeader" style="color:var(--success-color);">---</span></div>
+        <div class="metric-block"><span class="metric-label">Remaining Matches</span><span class="metric-value" id="dashRemaining">12</span></div>
+      </div>
+    </div>
+
+    <div class="grid-tables" id="groupFormationsSection">
+      <div class="card highlight-card">
+        <h2 style="color: var(--primary-color); text-align: left;">📋 Group A Members Roster</h2>
         <div class="table-wrapper">
           <table>
-            <thead>
-              <tr>
-                <th>Slot</th>
-                <th>Matchup</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="scheduleTableA"></tbody>
+            <thead><tr><th>Slot</th><th style="text-align:left;">Participant Name</th></tr></thead>
+            <tbody id="formationA"></tbody>
           </table>
         </div>
       </div>
-
-      <div class="card">
-        <h2 style="color: var(--primary-color); text-align: left;">📋 Court 2 (Group B Schedule)</h2>
+      <div class="card highlight-card">
+        <h2 style="color: var(--primary-color); text-align: left;">📋 Group B Members Roster</h2>
         <div class="table-wrapper">
           <table>
-            <thead>
-              <tr>
-                <th>Slot</th>
-                <th>Matchup</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="scheduleTableB"></tbody>
+            <thead><tr><th>Slot</th><th style="text-align:left;">Participant Name</th></tr></thead>
+            <tbody id="formationB"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <div class="card" id="groupLiveControlSection">
-      <h2>⚡ Live Scoring Panel</h2>
-      <div class="grid-courts">
-        <div>
-          <h3 style="color: var(--primary-color);">Court 1 (Group A)</h3>
-          <div id="liveControlCardA"></div>
-        </div>
-        <div>
-          <h3 style="color: var(--primary-color);">Court 2 (Group B)</h3>
-          <div id="liveControlCardB"></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="standings-container" class="hidden">
+    <div id="standings-container" class="animate-slide-up">
       <div class="grid-tables">
         <div class="card">
-          <h2>Group A Final Standings</h2>
+          <div style="display:flex; align-items:center; margin-bottom:10px; justify-content:center;">
+            <h2 style="margin:0;">Group A Standings Table</h2>
+            <span class="tooltip-container">
+              <span class="info-icon">ⓘ</span>
+              <span class="tooltip-text">Points framework: Win = 2 Pts, Draw = 1 Pt, Loss = 0 Pts. Ties at critical cutoff slots automatically generate an on-screen playoff match.</span>
+            </span>
+          </div>
           <div class="table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th style="text-align: left;">Participant</th>
+                  <th style="text-align: left;">Rank / Player</th>
                   <th>W</th>
                   <th>L</th>
                   <th>D</th>
@@ -126,12 +135,18 @@
         </div>
 
         <div class="card">
-          <h2>Group B Final Standings</h2>
+          <div style="display:flex; align-items:center; margin-bottom:10px; justify-content:center;">
+            <h2 style="margin:0;">Group B Standings Table</h2>
+            <span class="tooltip-container">
+              <span class="info-icon">ⓘ</span>
+              <span class="tooltip-text">Rankings update instantly. If two players have 4 points and two have 2 points, the top two advance without triggering any unnecessary playoffs.</span>
+            </span>
+          </div>
           <div class="table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th style="text-align: left;">Participant</th>
+                  <th style="text-align: left;">Rank / Player</th>
                   <th>W</th>
                   <th>L</th>
                   <th>D</th>
@@ -145,33 +160,106 @@
       </div>
     </div>
 
-    <div class="card hidden" id="tieBreakerSection">
-      <h2 style="color: #ef4444;">⚠️ Critical Standings Tie-Breaker Playoff</h2>
+    <div class="card" id="groupLiveControlSection">
+      <div style="display:flex; align-items:center; margin-bottom:15px; justify-content:center;">
+        <h2 style="margin:0;">⚡ Live Scoring Panel</h2>
+        <span class="tooltip-container">
+          <span class="info-icon">ⓘ</span>
+          <span class="tooltip-text">Clicking Win or Draw logs the match outcome, handles point shifts instantly, and automatically advances the matching court queue forward.</span>
+        </span>
+      </div>
+      <div class="grid-courts">
+        <div>
+          <h3 style="color: var(--primary-color);">Court 1 (Group A Queue)</h3>
+          <div id="liveControlCardA"></div>
+        </div>
+        <div>
+          <h3 style="color: var(--primary-color);">Court 2 (Group B Queue)</h3>
+          <div id="liveControlCardB"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-tables" id="schedulesContainer">
+      <div class="card">
+        <div style="display:flex; align-items:center; margin-bottom:10px;">
+          <h2 style="color: var(--primary-color); text-align: left; margin:0;">📋 Court 1 Timeline</h2>
+          <span class="tooltip-container">
+            <span class="info-icon">ⓘ</span>
+            <span class="tooltip-text">Live color status tracker: Green items represent logged matches, Yellow represents the current ongoing court match, and Gray reflects scheduled pairs.</span>
+          </span>
+        </div>
+        <div id="scheduleTimelineA" class="timeline-scroll-box"></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; align-items:center; margin-bottom:10px;">
+          <h2 style="color: var(--primary-color); text-align: left; margin:0;">📋 Court 2 Timeline</h2>
+          <span class="tooltip-container">
+            <span class="info-icon">ⓘ</span>
+            <span class="tooltip-text">Matches are perfectly interleaved between Court 1 and Court 2 to prevent any player from having to execute back-to-back group stage games.</span>
+          </span>
+        </div>
+        <div id="scheduleTimelineB" class="timeline-scroll-box"></div>
+      </div>
+    </div>
+
+    <div class="card hidden alarm-glow" id="tieBreakerSection">
+      <h2 style="color: #fbbf24;">⚠️ Standings Tie-Breaker Playoff Required</h2>
       <p class="center" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
-        An unbreakable tie has been detected at a qualification boundary. A playoff match is required.
+        An unbreakable tie has been detected at an advancement boundary. Log the playoff match below to resolve the ranks.
       </p>
       <div id="tieBreakerMatchesContainer"></div>
     </div>
 
-    <div class="card hidden" id="quarterSection">
-      <h2 style="color: var(--primary-color);">Quarter Finals (Top 2 Crossover)</h2>
+    <div class="card hidden animate-slide-up" id="quarterSection">
+      <h2>Quarter Finals (Top 2 Crossover Track)</h2>
       <div id="quarters"></div>
     </div>
 
     <div class="card hidden" id="semiSection">
-      <h2 style="color: var(--warning-color);">Semifinal (Bronze Medal Track)</h2>
+      <h2>Semifinal (Bronze Medal Track)</h2>
       <div id="semis"></div>
     </div>
 
     <div class="card hidden" id="finalSection">
-      <h2 style="color: var(--success-color);">Championship Grand Final</h2>
+      <h2>Championship Grand Final</h2>
       <div id="final"></div>
     </div>
 
-    <div id="screenshot-summary-area" class="hidden">
+    <div class="card hidden animate-slide-up" id="masterLedgerSection">
+      <div style="display:flex; align-items:center; margin-bottom:15px; justify-content:center;">
+        <h2 style="color: var(--primary-color); margin:0;">📊 Master Tournament Placement Ledger (Rank 1 - 8)</h2>
+        <span class="tooltip-container">
+          <span class="info-icon">ⓘ</span>
+          <span class="tooltip-text">Absolute positioning matrix calculated sequentially: 1st/2nd from Grand Final, 3rd/4th from Bronze playoff, 5th/6th from 3rd group seeds, 7th/8th from 4th group seeds.</span>
+        </span>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: left;">Final Rank Position</th>
+              <th>Participant Profile Name</th>
+              <th>Match Track Summary</th>
+            </tr>
+          </thead>
+          <tbody id="masterLedgerTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="screenshot-summary-area" class="hidden animate-scale-in">
+      <div style="text-align:center; margin-bottom:10px; display:flex; align-items:center; justify-content:center;">
+        <span style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">Shareable Result Summary Block</span>
+        <span class="tooltip-container">
+          <span class="info-icon">ⓘ</span>
+          <span class="tooltip-text">A custom high-contrast card board scaled exactly for mobile viewports. Perfect for capturing a single screenshot to share with your community chat groups.</span>
+        </span>
+      </div>
       <div class="screenshot-card">
         <div class="screenshot-header">
-          <h2>🏸 TOURNAMENT SUMMARY</h2>
+          <h2 id="lblSummaryTourneyName"> Live Summary Board</h2>
           <p id="summary-timestamp"></p>
         </div>
         
