@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Badminton Tournament Manager Pro</title>
+  <link rel="stylesheet" href="design.css">
+</head>
+<body>
+
+<div class="container">
+  <div class="header-actions">
+    <h1>🏸 Tournament Manager Pro</h1>
+    <button class="btn-secondary" onclick="toggleTheme()">🌓 Theme</button>
+  </div>
+
+  <div id="setup">
+    <div class="toggle-group">
+      <button id="btnSingles" class="mode-btn active" onclick="setTournamentMode('singles')">Singles Mode</button>
+      <button id="btnDoubles" class="mode-btn" onclick="setTournamentMode('doubles')">Doubles Mode</button>
+    </div>
+
+    <div class="toggle-group" style="margin-bottom: 25px;">
+      <button id="btnRandom" class="mode-btn active" onclick="setGroupingMode('random')">Random Allocation</button>
+      <button id="btnCustom" class="mode-btn" onclick="setGroupingMode('custom')">Custom Allocation</button>
+    </div>
+
+    <div id="inputs"></div>
+    
+    <div class="center" id="setupActionsBlock">
+      <button id="mainSetupBtn" onclick="processSetupStage()" style="font-size: 1rem; padding: 12px 28px;"></button>
+    </div>
+  </div>
+
+  <div id="customMatchmakingWrapper" class="card hidden">
+    <h2>🛠️ Configure Custom Match Schedules</h2>
+    <p class="center" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">
+      Manually select opponents for each match slot below.
+    </p>
+    <div class="grid-tables">
+      <div>
+        <h3 style="color: var(--primary-color);">Court 1 (Group A)</h3>
+        <div id="customMatchSlotsA"></div>
+      </div>
+      <div>
+        <h3 style="color: var(--primary-color);">Court 2 (Group B)</h3>
+        <div id="customMatchSlotsB"></div>
+      </div>
+    </div>
+    <div class="center" style="margin-top: 15px;">
+      <button onclick="launchCustomTournament()" style="width: 100%; max-width: 300px;">Initialize Custom Schedule</button>
+    </div>
+  </div>
+
+  <div id="main" class="hidden">
+    <div style="display:flex; justify-content: space-between; margin-bottom: 15px;">
+      <button class="btn-secondary" onclick="location.reload()">🔄 Reset</button>
+    </div>
+
+    <div class="grid-tables" id="schedulesContainer">
+      <div class="card">
+        <h2 style="color: var(--primary-color); text-align: left;">📋 Court 1 (Group A Schedule)</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Slot</th>
+                <th>Matchup</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleTableA"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="color: var(--primary-color); text-align: left;">📋 Court 2 (Group B Schedule)</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Slot</th>
+                <th>Matchup</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleTableB"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="groupLiveControlSection">
+      <h2>⚡ Live Scoring Panel</h2>
+      <div class="grid-courts">
+        <div>
+          <h3 style="color: var(--primary-color);">Court 1 (Group A)</h3>
+          <div id="liveControlCardA"></div>
+        </div>
+        <div>
+          <h3 style="color: var(--primary-color);">Court 2 (Group B)</h3>
+          <div id="liveControlCardB"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="standings-container" class="hidden">
+      <div class="grid-tables">
+        <div class="card">
+          <h2>Group A Final Standings</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: left;">Participant</th>
+                  <th>W</th>
+                  <th>L</th>
+                  <th>D</th>
+                  <th>Pts</th>
+                </tr>
+              </thead>
+              <tbody id="tableA"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Group B Final Standings</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: left;">Participant</th>
+                  <th>W</th>
+                  <th>L</th>
+                  <th>D</th>
+                  <th>Pts</th>
+                </tr>
+              </thead>
+              <tbody id="tableB"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="tieBreakerSection">
+      <h2 style="color: #ef4444;">⚠️ Critical Standings Tie-Breaker Playoff</h2>
+      <p class="center" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
+        An unbreakable tie has been detected at a qualification boundary. A playoff match is required.
+      </p>
+      <div id="tieBreakerMatchesContainer"></div>
+    </div>
+
+    <div class="card hidden" id="quarterSection">
+      <h2 style="color: var(--primary-color);">Quarter Finals (Top 2 Crossover)</h2>
+      <div id="quarters"></div>
+    </div>
+
+    <div class="card hidden" id="semiSection">
+      <h2 style="color: var(--warning-color);">Semifinal (Bronze Medal Track)</h2>
+      <div id="semis"></div>
+    </div>
+
+    <div class="card hidden" id="finalSection">
+      <h2 style="color: var(--success-color);">Championship Grand Final</h2>
+      <div id="final"></div>
+    </div>
+
+    <div id="screenshot-summary-area" class="hidden">
+      <div class="screenshot-card">
+        <div class="screenshot-header">
+          <h2>🏸 TOURNAMENT SUMMARY</h2>
+          <p id="summary-timestamp"></p>
+        </div>
+        
+        <div class="screenshot-ranks-list">
+          <div class="rank-row-item gold-item">
+            <div class="rank-left-block">
+              <span class="rank-badge">🥇 1st Rank</span>
+              <span class="rank-stats-sub" id="stats-rank-1"></span>
+            </div>
+            <span class="rank-player-name" id="lbl-rank-1">---</span>
+          </div>
+          <div class="rank-row-item silver-item">
+            <div class="rank-left-block">
+              <span class="rank-badge">🥈 2nd Rank</span>
+              <span class="rank-stats-sub" id="stats-rank-2"></span>
+            </div>
+            <span class="rank-player-name" id="lbl-rank-2">---</span>
+          </div>
+          <div class="rank-row-item bronze-item">
+            <div class="rank-left-block">
+              <span class="rank-badge">🥉 3rd Rank</span>
+              <span class="rank-stats-sub" id="stats-rank-3"></span>
+            </div>
+            <span class="rank-player-name" id="lbl-rank-3">---</span>
+          </div>
+        </div>
+
+        <div class="podium-wrapper">
+          <div class="podium-rank rank-2">
+            <div class="podium-bar">🥈</div>
+            <div class="podium-name" id="p-second">---</div>
+            <div class="podium-label">2nd Place</div>
+          </div>
+          <div class="podium-rank rank-1">
+            <div class="podium-bar">🏆 🥇</div>
+            <div class="podium-name" id="p-first">---</div>
+            <div class="podium-label">CHAMPION</div>
+          </div>
+          <div class="podium-rank rank-3">
+            <div class="podium-bar">🥉</div>
+            <div class="podium-name" id="p-third">---</div>
+            <div class="podium-label">3rd Place</div>
+          </div>
+        </div>
+
+        <div class="screenshot-path-recap">
+          <h4>Knockout Bracket Path Summary</h4>
+          <div class="path-line" id="path-line-qf1"></div>
+          <div class="path-line" id="path-line-qf2"></div>
+          <div class="path-line" id="path-line-bsf"></div>
+          <div class="path-line" id="path-line-gf"></div>
+        </div>
+
+        <div class="screenshot-footer">
+          <p>Ready to Screenshot & Share 📸</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="functioning.js"></script>
+</body>
+</html>
