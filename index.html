@@ -1,327 +1,928 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Badminton Tournament Manager Pro</title>
-  <link rel="stylesheet" href="design.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Powers AR - Single File Edition</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --primary-neon: #00f3ff;
+            --accent-orange: #ff5500;
+            --bg-blur: rgba(10, 10, 15, 0.75);
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: var(--font-family);
+            color: #fff;
+        }
+
+        #app-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #webcam {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Selfie Mirroring */
+            z-index: 1;
+        }
+
+        #ar-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            pointer-events: none;
+        }
+
+        #hud * {
+            pointer-events: auto;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-blur);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--primary-neon);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: var(--primary-neon);
+            text-shadow: 0 0 8px var(--primary-neon);
+        }
+
+        #fps-counter {
+            font-family: monospace;
+            font-size: 1rem;
+            color: #00ff66;
+        }
+
+        .hud-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+
+        #gesture-indicator {
+            background: rgba(255, 85, 0, 0.8);
+            padding: 12px 25px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 4px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 20px rgba(255, 85, 0, 0.6);
+            animation: pulse 1.5s infinite;
+        }
+
+        #cooldown-overlay {
+            margin-top: 10px;
+            font-size: 1rem;
+            color: #ff3333;
+            letter-spacing: 1px;
+        }
+
+        .hud-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .power-selector {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 5px;
+            scrollbar-width: none;
+        }
+
+        .power-selector::-webkit-scrollbar {
+            display: none;
+        }
+
+        .power-btn {
+            background: var(--bg-blur);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .power-btn:hover {
+            border-color: var(--primary-neon);
+            background: rgba(0, 243, 255, 0.15);
+        }
+
+        .power-btn.active {
+            border-color: var(--primary-neon);
+            background: var(--primary-neon);
+            color: #000;
+            box-shadow: 0 0 15px var(--primary-neon);
+        }
+
+        .utility-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .util-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .util-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @media (max-width: 768px) {
+            .hud-header { padding: 8px 12px; }
+            .brand { font-size: 1rem; }
+            .power-btn { padding: 8px 14px; font-size: 0.9rem; }
+            .util-btn { padding: 8px 14px; font-size: 0.85rem; }
+        }
+    </style>
 </head>
 <body>
+    <div id="app-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="ar-canvas"></canvas>
 
-<div class="container animate-fade-in">
-  <div class="header-actions">
-    <h1>🏸 Tournament Manager Pro</h1>
-    <button class="btn-secondary" onclick="toggleTheme()">🌓 Toggle Light Mode</button>
-  </div>
-
-  <div id="setup" class="animate-slide-up">
-    <div class="input-card" style="margin-bottom:15px;">
-      <div style="display:flex; align-items:center;">
-        <label>Tournament Name</label>
-        <span class="tooltip-container">
-          <span class="info-icon">ⓘ</span>
-          <span class="tooltip-text">The official title for this tournament. It wraps beautifully into your final screenshot-ready summary card.</span>
-        </span>
-      </div>
-      <input type="text" id="txtTournamentName" value="Championship Open">
-    </div>
-    
-    <div class="toggle-group" style="margin-bottom: 25px;">
-      <button id="btnRandom" class="mode-btn active" onclick="setGroupingMode('random')">Random Allocation</button>
-      <button id="btnCustom" class="mode-btn" onclick="setGroupingMode('custom')">Custom Allocation</button>
-      <span class="tooltip-container" style="align-self: center;">
-        <span class="info-icon">ⓘ</span>
-        <span class="tooltip-text">Random: Splits 8 entries evenly and builds balanced timelines automatically. Custom: Lets you manually pick group slots and design your own matching configurations.</span>
-      </span>
-    </div>
-
-    <div id="inputs"></div>
-    
-    <div class="center" id="setupActionsBlock">
-      <button id="mainSetupBtn" onclick="processSetupStage()" style="font-size: 1rem; padding: 12px 28px; width:100%; max-width:320px;"></button>
-    </div>
-  </div>
-
-  <div id="customMatchmakingWrapper" class="card hidden animate-slide-up">
-    <h2>🛠️ Configure Custom Match Schedules</h2>
-    <p class="center" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">
-      Manually select opponents for each match slot below.
-    </p>
-    <div class="grid-tables">
-      <div>
-        <h3 style="color: var(--primary-color);">Court 1 (Group A)</h3>
-        <div id="customMatchSlotsA"></div>
-      </div>
-      <div>
-        <h3 style="color: var(--primary-color);">Court 2 (Group B)</h3>
-        <div id="customMatchSlotsB"></div>
-      </div>
-    </div>
-    <div class="center" style="margin-top: 15px;">
-      <button onclick="launchCustomTournament()" style="width: 100%; max-width: 300px;">Initialize Custom Schedule</button>
-    </div>
-  </div>
-
-  <div id="main" class="hidden animate-fade-in">
-    <div class="control-action-bar">
-      <button class="btn-secondary" id="btnUndo" onclick="undoLastAction()" disabled>↩️ Undo Match</button>
-      <div style="display: flex; gap: 8px;">
-        <button class="btn-secondary" onclick="resetTournamentKeepPlayers()">🔄 Reset Scores</button>
-        <button class="btn-secondary" onclick="clearFullTournamentData()">❌ Clear All</button>
-      </div>
-    </div>
-
-    <div class="card dashboard-card animate-slide-up">
-      <div style="display:flex; align-items:center; margin-bottom:12px;">
-        <h2 id="dashTitle" style="text-align:left; margin:0; color:var(--primary-color);">🏆 Dashboard Summary</h2>
-        <span class="tooltip-container">
-          <span class="info-icon">ⓘ</span>
-          <span class="tooltip-text">Tracks real-time tournament statistics. Leader is computed dynamically based on current highest point value standings.</span>
-        </span>
-      </div>
-      <div class="dashboard-metrics-grid">
-        <div class="metric-block"><span class="metric-label">Players Enrolled</span><span class="metric-value" id="dashPlayers">8 Players</span></div>
-        <div class="metric-block"><span class="metric-label">Matches Played</span><span class="metric-value" id="dashPlayed">0 / 12</span></div>
-        <div class="metric-block"><span class="metric-label">Current Leader</span><span class="metric-value" id="dashLeader" style="color:var(--success-color);">---</span></div>
-        <div class="metric-block"><span class="metric-label">Remaining Matches</span><span class="metric-value" id="dashRemaining">12</span></div>
-      </div>
-    </div>
-
-    <div class="grid-tables" id="groupFormationsSection">
-      <div class="card highlight-card">
-        <h2 style="color: var(--primary-color); text-align: left;">📋 Group A Members Roster</h2>
-        <div class="table-wrapper">
-          <table>
-            <thead><tr><th>Slot</th><th style="text-align:left;">Participant Name</th></tr></thead>
-            <tbody id="formationA"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="card highlight-card">
-        <h2 style="color: var(--primary-color); text-align: left;">📋 Group B Members Roster</h2>
-        <div class="table-wrapper">
-          <table>
-            <thead><tr><th>Slot</th><th style="text-align:left;">Participant Name</th></tr></thead>
-            <tbody id="formationB"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div id="standings-container" class="animate-slide-up">
-      <div class="grid-tables">
-        <div class="card">
-          <div style="display:flex; align-items:center; margin-bottom:10px; justify-content:center;">
-            <h2 style="margin:0;">Group A Standings Table</h2>
-            <span class="tooltip-container">
-              <span class="info-icon">ⓘ</span>
-              <span class="tooltip-text">Points framework: Win = 2 Pts, Draw = 1 Pt, Loss = 0 Pts. Ties at critical cutoff slots automatically generate an on-screen playoff match.</span>
-            </span>
-          </div>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th style="text-align: left;">Rank / Player</th>
-                  <th>W</th>
-                  <th>L</th>
-                  <th>D</th>
-                  <th>Pts</th>
-                </tr>
-              </thead>
-              <tbody id="tableA"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex; align-items:center; margin-bottom:10px; justify-content:center;">
-            <h2 style="margin:0;">Group B Standings Table</h2>
-            <span class="tooltip-container">
-              <span class="info-icon">ⓘ</span>
-              <span class="tooltip-text">Rankings update instantly. If two players have 4 points and two have 2 points, the top two advance without triggering any unnecessary playoffs.</span>
-            </span>
-          </div>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th style="text-align: left;">Rank / Player</th>
-                  <th>W</th>
-                  <th>L</th>
-                  <th>D</th>
-                  <th>Pts</th>
-                </tr>
-              </thead>
-              <tbody id="tableB"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" id="groupLiveControlSection">
-      <div style="display:flex; align-items:center; margin-bottom:15px; justify-content:center;">
-        <h2 style="margin:0;">⚡ Live Scoring Panel</h2>
-        <span class="tooltip-container">
-          <span class="info-icon">ⓘ</span>
-          <span class="tooltip-text">Clicking Win or Draw logs the match outcome, handles point shifts instantly, and automatically advances the matching court queue forward.</span>
-        </span>
-      </div>
-      <div class="grid-courts">
-        <div>
-          <h3 style="color: var(--primary-color);">Court 1 (Group A Queue)</h3>
-          <div id="liveControlCardA"></div>
-        </div>
-        <div>
-          <h3 style="color: var(--primary-color);">Court 2 (Group B Queue)</h3>
-          <div id="liveControlCardB"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-tables" id="schedulesContainer">
-      <div class="card">
-        <div style="display:flex; align-items:center; margin-bottom:10px;">
-          <h2 style="color: var(--primary-color); text-align: left; margin:0;">📋 Court 1 Timeline</h2>
-          <span class="tooltip-container">
-            <span class="info-icon">ⓘ</span>
-            <span class="tooltip-text">Live color status tracker: Green items represent logged matches, Yellow represents the current ongoing court match, and Gray reflects scheduled pairs.</span>
-          </span>
-        </div>
-        <div id="scheduleTimelineA" class="timeline-scroll-box"></div>
-      </div>
-
-      <div class="card">
-        <div style="display:flex; align-items:center; margin-bottom:10px;">
-          <h2 style="color: var(--primary-color); text-align: left; margin:0;">📋 Court 2 Timeline</h2>
-          <span class="tooltip-container">
-            <span class="info-icon">ⓘ</span>
-            <span class="tooltip-text">Matches are perfectly interleaved between Court 1 and Court 2 to prevent any player from having to execute back-to-back group stage games.</span>
-          </span>
-        </div>
-        <div id="scheduleTimelineB" class="timeline-scroll-box"></div>
-      </div>
-    </div>
-
-    <div class="card hidden alarm-glow" id="tieBreakerSection">
-      <h2 style="color: #fbbf24;">⚠️ Standings Tie-Breaker Playoff Required</h2>
-      <p class="center" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
-        An unbreakable tie has been detected at an advancement boundary. Log the playoff match below to resolve the ranks.
-      </p>
-      <div id="tieBreakerMatchesContainer"></div>
-    </div>
-
-    <div class="card hidden animate-slide-up" id="quarterSection">
-      <h2>Quarter Finals (Top 2 Crossover Track)</h2>
-      <div id="quarters"></div>
-    </div>
-
-    <div class="card hidden" id="semiSection">
-      <h2>Semifinal (Bronze Medal Track)</h2>
-      <div id="semis"></div>
-    </div>
-
-    <div class="card hidden" id="finalSection">
-      <h2>Championship Grand Final</h2>
-      <div id="final"></div>
-    </div>
-
-    <div class="card hidden animate-slide-up" id="masterLedgerSection">
-      <div style="display:flex; align-items:center; margin-bottom:15px; justify-content:center;">
-        <h2 style="color: var(--primary-color); margin:0;">📊 Master Tournament Placement Ledger (Rank 1 - 8)</h2>
-        <span class="tooltip-container">
-          <span class="info-icon">ⓘ</span>
-          <span class="tooltip-text">Absolute positioning matrix calculated sequentially: 1st/2nd from Grand Final, 3rd/4th from Bronze playoff, 5th/6th from 3rd group seeds, 7th/8th from 4th group seeds.</span>
-        </span>
-      </div>
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th style="text-align: left;">Final Rank Position</th>
-              <th>Participant Profile Name</th>
-              <th>Match Track Summary</th>
-            </tr>
-          </thead>
-          <tbody id="masterLedgerTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="screenshot-summary-area" class="hidden animate-scale-in">
-      <div style="text-align:center; margin-bottom:10px; display:flex; align-items:center; justify-content:center;">
-        <span style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">Shareable Result Summary Block</span>
-        <span class="tooltip-container">
-          <span class="info-icon">ⓘ</span>
-          <span class="tooltip-text">A custom high-contrast card board scaled exactly for mobile viewports. Perfect for capturing a single screenshot to share with your community chat groups.</span>
-        </span>
-      </div>
-      <div class="screenshot-card">
-        <div class="screenshot-header">
-          <h2 id="lblSummaryTourneyName"> Live Summary Board</h2>
-          <p id="summary-timestamp"></p>
-        </div>
-        
-        <div class="screenshot-ranks-list">
-          <div class="rank-row-item gold-item">
-            <div class="rank-left-block">
-              <span class="rank-badge">🥇 1st Rank</span>
-              <span class="rank-stats-sub" id="stats-rank-1"></span>
+        <div id="hud">
+            <div class="hud-header">
+                <div class="brand">ANIME POWERS AR</div>
+                <div id="fps-counter">FPS: 0</div>
             </div>
-            <span class="rank-player-name" id="lbl-rank-1">---</span>
-          </div>
-          <div class="rank-row-item silver-item">
-            <div class="rank-left-block">
-              <span class="rank-badge">🥈 2nd Rank</span>
-              <span class="rank-stats-sub" id="stats-rank-2"></span>
+
+            <div class="hud-center">
+                <div id="gesture-indicator" class="hidden">GESTURE LOCKED</div>
+                <div id="cooldown-overlay" class="hidden">RECHARGING CHAKRA</div>
             </div>
-            <span class="rank-player-name" id="lbl-rank-2">---</span>
-          </div>
-          <div class="rank-row-item bronze-item">
-            <div class="rank-left-block">
-              <span class="rank-badge">🥉 3rd Rank</span>
-              <span class="rank-stats-sub" id="stats-rank-3"></span>
+
+            <div class="hud-controls">
+                <div class="power-selector">
+                    <button class="power-btn active" data-power="rasengan">Rasengan</button>
+                    <button class="power-btn" data-power="chidori">Chidori</button>
+                    <button class="power-btn" data-power="kamehameha">Kamehameha</button>
+                    <button class="power-btn" data-power="fireball">Fireball</button>
+                    <button class="power-btn" data-power="shadowclone">Shadow Clone</button>
+                    <button class="power-btn" data-power="domain">Domain Expansion</button>
+                </div>
+
+                <div class="utility-controls">
+                    <button id="btn-screenshot" class="util-btn">📸 Capture</button>
+                    <button id="btn-record" class="util-btn">📹 Record</button>
+                    <button id="btn-debug" class="util-btn">⚙️ Toggle Wireframe</button>
+                </div>
             </div>
-            <span class="rank-player-name" id="lbl-rank-3">---</span>
-          </div>
         </div>
-
-        <div class="podium-wrapper">
-          <div class="podium-rank rank-2">
-            <div class="podium-bar">🥈</div>
-            <div class="podium-name" id="p-second">---</div>
-            <div class="podium-label">2nd Place</div>
-          </div>
-          <div class="podium-rank rank-1">
-            <div class="podium-bar">🏆 🥇</div>
-            <div class="podium-name" id="p-first">---</div>
-            <div class="podium-label">CHAMPION</div>
-          </div>
-          <div class="podium-rank rank-3">
-            <div class="podium-bar">🥉</div>
-            <div class="podium-name" id="p-third">---</div>
-            <div class="podium-label">3rd Place</div>
-          </div>
-        </div>
-
-        <div class="screenshot-path-recap">
-          <h4>Knockout Bracket Path Summary</h4>
-          <div class="path-line" id="path-line-qf1"></div>
-          <div class="path-line" id="path-line-qf2"></div>
-          <div class="path-line" id="path-line-bsf"></div>
-          <div class="path-line" id="path-line-gf"></div>
-        </div>
-
-        <div class="screenshot-footer">
-          <p>Ready to Screenshot & Share 📸</p>
-        </div>
-      </div>
     </div>
 
-  </div>
-</div>
+    <script>
+        // --- CAMERA SYSTEM ---
+        class CameraSystem {
+            constructor(videoElementId) {
+                this.videoElement = document.getElementById(videoElementId);
+                this.stream = null;
+            }
 
-<script src="functioning.js"></script>
+            async initialize() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("Webcam access completely unsupported in this environment.");
+                }
+
+                const constraints = {
+                    video: {
+                        facingMode: "user",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 60 }
+                    },
+                    audio: false
+                };
+
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    this.videoElement.srcObject = this.stream;
+                    return new Promise((resolve) => {
+                        this.videoElement.onloadedmetadata = () => {
+                            this.videoElement.play();
+                            resolve(this.videoElement);
+                        };
+                    });
+                } catch (error) {
+                    console.error("Error accessing camera capture device:", error);
+                    throw error;
+                }
+            }
+
+            getDimensions() {
+                return {
+                    width: this.videoElement.videoWidth,
+                    height: this.videoElement.videoHeight
+                };
+            }
+        }
+
+        // --- HAND TRACKER ---
+        class HandTracker {
+            constructor(videoElement) {
+                this.videoElement = videoElement;
+                this.hands = null;
+                this.currentResults = null;
+                this.smoothedLandmarks = [{}, {}];
+                this.smoothingFactor = 0.35;
+            }
+
+            initialize(onResultsCallback) {
+                this.hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+
+                this.hands.setOptions({
+                    maxNumHands: 2,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.65,
+                    minTrackingConfidence: 0.65
+                });
+
+                this.hands.onResults((results) => {
+                    this.processSmoothing(results);
+                    onResultsCallback(results);
+                });
+
+                const cameraFramePump = new Camera(this.videoElement, {
+                    onFrame: async () => {
+                        await this.hands.send({ image: this.videoElement });
+                    },
+                    width: this.videoElement.videoWidth || 1280,
+                    height: this.videoElement.videoHeight || 720
+                });
+                cameraFramePump.start();
+            }
+
+            processSmoothing(results) {
+                this.currentResults = results;
+                if (!results.multiHandLandmarks) return;
+
+                for (let h = 0; h < results.multiHandLandmarks.length; h++) {
+                    const rawHand = results.multiHandLandmarks[h];
+                    if (!this.smoothedLandmarks[h]) this.smoothedLandmarks[h] = {};
+
+                    for (let i = 0; i < rawHand.length; i++) {
+                        if (!this.smoothedLandmarks[h][i]) {
+                            this.smoothedLandmarks[h][i] = { x: rawHand[i].x, y: rawHand[i].y, z: rawHand[i].z };
+                        } else {
+                            this.smoothedLandmarks[h][i].x += (rawHand[i].x - this.smoothedLandmarks[h][i].x) * this.smoothingFactor;
+                            this.smoothedLandmarks[h][i].y += (rawHand[i].y - this.smoothedLandmarks[h][i].y) * this.smoothingFactor;
+                            this.smoothedLandmarks[h][i].z += (rawHand[i].z - this.smoothedLandmarks[h][i].z) * this.smoothingFactor;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- GESTURE DETECTOR ---
+        class GestureDetector {
+            static getDistance(pt1, pt2) {
+                return Math.sqrt(Math.pow(pt1.x - pt2.x, 2) + Math.pow(pt1.y - pt2.y, 2));
+            }
+
+            static analyzeHand(landmarks) {
+                const wrist = landmarks[0];
+                const thumbTip = landmarks[4];
+                const indexTip = landmarks[8];
+                const indexPip = landmarks[6];
+                const middleTip = landmarks[12];
+                const middlePip = landmarks[10];
+                const ringTip = landmarks[16];
+                const pinkyTip = landmarks[20];
+
+                const indexExtended = indexTip.y < indexPip.y;
+                const middleExtended = middleTip.y < middlePip.y;
+                const ringExtended = ringTip.y > landmarks[14].y;
+                const pinkyExtended = pinkyTip.y > landmarks[18].y;
+
+                if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
+                    return "VICTORY";
+                }
+                if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
+                    return "POINTING";
+                }
+                
+                let openFingersCount = 0;
+                if (indexTip.y < landmarks[5].y) openFingersCount++;
+                if (middleTip.y < landmarks[9].y) openFingersCount++;
+                if (ringTip.y < landmarks[13].y) openFingersCount++;
+                if (pinkyTip.y < landmarks[17].y) openFingersCount++;
+                if (Math.abs(thumbTip.x - landmarks[2].x) > 0.05) openFingersCount++;
+
+                if (openFingersCount >= 4) return "OPEN_PALM";
+                if (openFingersCount <= 1) return "CLOSED_FIST";
+
+                return "UNKNOWN";
+            }
+
+            static detectCombo(multiHandLandmarks) {
+                if (!multiHandLandmarks || multiHandLandmarks.length < 2) return null;
+
+                const hand1 = multiHandLandmarks[0];
+                const hand2 = multiHandLandmarks[1];
+
+                const wristDist = this.getDistance(hand1[0], hand2[0]);
+                if (wristDist < 0.12) {
+                    return "HANDS_TOGETHER";
+                }
+
+                if (Math.abs(hand1[9].y - hand2[9].y) < 0.1 && Math.abs(hand1[9].x - hand2[9].x) < 0.15) {
+                    return "CROSSED_ARMS";
+                }
+
+                return null;
+            }
+        }
+
+        // --- EFFECTS ENGINE ---
+        class EffectsEngine {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.shakeIntensity = 0;
+                this.shakeDecay = 0.9;
+                this.debugMode = false;
+                this.debugGraphics = [];
+            }
+
+            initialize() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.z = 5;
+
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: this.canvas,
+                    alpha: true,
+                    antialias: true,
+                    preserveDrawingBuffer: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                this.scene.add(ambientLight);
+
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            triggerScreenShake(intensity) {
+                this.shakeIntensity = intensity;
+            }
+
+            updateAndRender() {
+                if (this.shakeIntensity > 0.005) {
+                    this.camera.position.x = (Math.random() - 0.5) * this.shakeIntensity;
+                    this.camera.position.y = (Math.random() - 0.5) * this.shakeIntensity;
+                    this.shakeIntensity *= this.shakeDecay;
+                } else {
+                    this.camera.position.x = 0;
+                    this.camera.position.y = 0;
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            normalizeCoordinates(landmark) {
+                const x = -(landmark.x * 2 - 1) * 2.5; 
+                const y = -(landmark.y * 2 - 1) * 1.8;
+                const z = -landmark.z * 2;
+                return new THREE.Vector3(x, y, z);
+            }
+
+            clearDebugGraphics() {
+                this.debugGraphics.forEach(obj => this.scene.remove(obj));
+                this.debugGraphics = [];
+            }
+
+            drawDebugHand(landmarks) {
+                if (!this.debugMode) return;
+                
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+
+                landmarks.forEach(pt => {
+                    const pos = this.normalizeCoordinates(pt);
+                    vertices.push(pos.x, pos.y, pos.z);
+                });
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                const material = new THREE.PointsMaterial({ color: 0x00ff00, size: 0.08 });
+                const points = new THREE.Points(geometry, material);
+                
+                this.scene.add(points);
+                this.debugGraphics.push(points);
+            }
+        }
+
+        // --- POWERS MANAGER ---
+        class AnimePowersManager {
+            constructor(effectsEngine) {
+                this.engine = effectsEngine;
+                this.activePowerMesh = null;
+                this.particles = null;
+                this.particleCount = 120;
+                this.domainActive = false;
+                this.domainTimer = 0;
+            }
+
+            instantiateRasengan(position) {
+                this.clearActivePower();
+                const group = new THREE.Group();
+
+                const coreGeo = new THREE.SphereGeometry(0.25, 32, 32);
+                const coreMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.85 });
+                const core = new THREE.Mesh(coreGeo, coreMat);
+                group.add(core);
+
+                const ringGeo = new THREE.TorusGeometry(0.32, 0.015, 8, 48);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 });
+                
+                const ring1 = new THREE.Mesh(ringGeo, ringMat);
+                const ring2 = ring1.clone();
+                ring2.rotation.x = Math.PI / 2;
+
+                group.add(ring1);
+                group.add(ring2);
+
+                const pGeometry = new THREE.BufferGeometry();
+                const pPositions = [];
+                for (let i = 0; i < this.particleCount; i++) {
+                    const vertex = new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.4,
+                        (Math.random() - 0.5) * 0.4,
+                        (Math.random() - 0.5) * 0.4
+                    );
+                    pPositions.push(vertex.x, vertex.y, vertex.z);
+                }
+                pGeometry.setAttribute('position', new THREE.Float32BufferAttribute(pPositions, 3));
+                const pMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true });
+                this.particles = new THREE.Points(pGeometry, pMaterial);
+                group.add(this.particles);
+
+                group.position.copy(position);
+                this.engine.scene.add(group);
+                this.activePowerMesh = group;
+            }
+
+            instantiateChidori(position) {
+                this.clearActivePower();
+                const group = new THREE.Group();
+
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xccf3ff });
+                for (let i = 0; i < 12; i++) {
+                    const points = [];
+                    points.push(new THREE.Vector3(0, 0, 0));
+                    for(let j = 1; j <= 4; j++) {
+                        points.push(new THREE.Vector3(
+                            (Math.random() - 0.5) * 0.35,
+                            (Math.random() - 0.5) * 0.35,
+                            (Math.random() - 0.5) * 0.35
+                        ));
+                    }
+                    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(lineGeo, lineMat);
+                    group.add(line);
+                }
+
+                group.position.copy(position);
+                this.engine.scene.add(group);
+                this.activePowerMesh = group;
+            }
+
+            instantiateKamehameha(posL, posR) {
+                this.clearActivePower();
+                const group = new THREE.Group();
+                const midPoint = new THREE.Vector3().addVectors(posL, posR).multiplyScalar(0.5);
+
+                const coreGeo = new THREE.SphereGeometry(0.4, 32, 32);
+                const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
+                const core = new THREE.Mesh(coreGeo, coreMat);
+                group.add(core);
+
+                const cylinderGeo = new THREE.CylinderGeometry(0.25, 0.45, 6, 32);
+                cylinderGeo.rotateX(Math.PI / 2);
+                cylinderGeo.translate(0, 0, -3);
+                const cylinderMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0.5 });
+                const beam = new THREE.Mesh(cylinderGeo, cylinderMat);
+                group.add(beam);
+
+                group.position.copy(midPoint);
+                this.engine.scene.add(group);
+                this.activePowerMesh = group;
+                this.engine.triggerScreenShake(0.12);
+            }
+
+            instantiateFireball(position) {
+                this.clearActivePower();
+                const geo = new THREE.SphereGeometry(0.35, 16, 16);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xff4400, wireframe: false });
+                const mesh = new THREE.Mesh(geo, mat);
+                
+                mesh.position.copy(position);
+                this.engine.scene.add(mesh);
+                this.activePowerMesh = mesh;
+            }
+
+            instantiateShadowClone() {
+                this.clearActivePower();
+                const group = new THREE.Group();
+                const cloneGeo = new THREE.BoxGeometry(0.5, 1.2, 0.1);
+                const cloneMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.3, wireframe: true });
+                
+                const cloneLeft = new THREE.Mesh(cloneGeo, cloneMat);
+                cloneLeft.position.set(-1.5, 0, -1);
+                const cloneRight = cloneLeft.clone();
+                cloneRight.position.set(1.5, 0, -1);
+
+                group.add(cloneLeft, cloneRight);
+                this.engine.scene.add(group);
+                this.activePowerMesh = group;
+            }
+
+            triggerDomainExpansion() {
+                this.clearActivePower();
+                this.domainActive = true;
+                this.domainTimer = 300;
+
+                const geo = new THREE.SphereGeometry(4, 32, 32);
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0x110022,
+                    side: THREE.BackSide,
+                    wireframe: true
+                });
+                const barrier = new THREE.Mesh(geo, mat);
+                this.engine.scene.add(barrier);
+                this.activePowerMesh = barrier;
+            }
+
+            updateActiveAnimations() {
+                if (!this.activePowerMesh) return;
+
+                if (this.particles) {
+                    this.particles.rotation.y += 0.05;
+                    this.particles.rotation.x += 0.02;
+                }
+
+                this.activePowerMesh.children.forEach(child => {
+                    if (child instanceof THREE.Mesh && child.geometry instanceof THREE.TorusGeometry) {
+                        child.rotation.z += 0.04;
+                    }
+                });
+
+                if (this.domainActive) {
+                    this.activePowerMesh.rotation.y += 0.005;
+                    this.domainTimer--;
+                    if (this.domainTimer <= 0) {
+                        this.domainActive = false;
+                        this.clearActivePower();
+                    }
+                }
+            }
+
+            updatePosition(vector) {
+                if (this.activePowerMesh && !this.domainActive) {
+                    this.activePowerMesh.position.copy(vector);
+                }
+            }
+
+            clearActivePower() {
+                if (this.activePowerMesh) {
+                    this.engine.scene.remove(this.activePowerMesh);
+                    this.activePowerMesh = null;
+                    this.particles = null;
+                }
+            }
+        }
+
+        // --- UI SYSTEM ---
+        class UISystem {
+            constructor() {
+                this.fpsElement = document.getElementById("fps-counter");
+                this.gestureIndicator = document.getElementById("gesture-indicator");
+                this.cooldownOverlay = document.getElementById("cooldown-overlay");
+                this.powerButtons = document.querySelectorAll(".power-btn");
+                this.onPowerChangeCallback = null;
+                
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.initializeListeners();
+            }
+
+            initializeListeners() {
+                this.powerButtons.forEach(btn => {
+                    btn.addEventListener("click", (e) => {
+                        this.powerButtons.forEach(b => b.classList.remove("active"));
+                        e.target.classList.add("active");
+                        if (this.onPowerChangeCallback) {
+                            this.onPowerChangeCallback(e.target.dataset.power);
+                        }
+                    });
+                });
+            }
+
+            bindPowerChangeEvent(callback) {
+                this.onPowerChangeCallback = callback;
+            }
+
+            updateFPS() {
+                this.frameCount++;
+                const time = performance.now();
+                if (time >= this.lastTime + 1000) {
+                    this.fpsElement.innerText = `FPS: ${Math.round((this.frameCount * 1000) / (time - this.lastTime))}`;
+                    this.frameCount = 0;
+                    this.lastTime = time;
+                }
+            }
+
+            displayGesture(gestureName) {
+                if (!gestureName || gestureName === "UNKNOWN") {
+                    this.gestureIndicator.classList.add("hidden");
+                } else {
+                    this.gestureIndicator.classList.remove("hidden");
+                    this.gestureIndicator.innerText = `GESTURE: ${gestureName}`;
+                }
+            }
+
+            setCooldown(active) {
+                if (active) {
+                    this.cooldownOverlay.classList.remove("hidden");
+                } else {
+                    this.cooldownOverlay.classList.add("hidden");
+                }
+            }
+        }
+
+        // --- APPLICATION ORCHESTRATOR ---
+        class ApplicationOrchestrator {
+            constructor() {
+                this.cameraSystem = new CameraSystem("webcam");
+                this.effectsEngine = new EffectsEngine("ar-canvas");
+                this.uiSystem = new UISystem();
+                this.handTracker = null;
+                this.powersManager = null;
+                
+                this.selectedPower = "rasengan";
+                this.cooldownActive = false;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+            }
+
+            async start() {
+                const videoElement = await this.cameraSystem.initialize();
+                this.effectsEngine.initialize();
+                
+                this.handTracker = new HandTracker(videoElement);
+                this.powersManager = new AnimePowersManager(this.effectsEngine);
+
+                this.uiSystem.bindPowerChangeEvent((power) => {
+                    this.selectedPower = power;
+                    this.powersManager.clearActivePower();
+                });
+
+                document.getElementById("btn-debug").addEventListener("click", () => {
+                    this.effectsEngine.debugMode = !this.effectsEngine.debugMode;
+                });
+
+                document.getElementById("btn-screenshot").addEventListener("click", () => this.captureScreenshot());
+                document.getElementById("btn-record").addEventListener("click", () => this.toggleRecording());
+
+                this.handTracker.initialize((results) => this.onTrackingResults(results));
+                this.renderLoop();
+            }
+
+            onTrackingResults(results) {
+                this.effectsEngine.clearDebugGraphics();
+                let unifiedGesture = null;
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length >= 2) {
+                    unifiedGesture = GestureDetector.detectCombo(results.multiHandLandmarks);
+                }
+
+                if (!unifiedGesture && results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    unifiedGesture = GestureDetector.analyzeHand(results.multiHandLandmarks[0]);
+                }
+
+                this.uiSystem.displayGesture(unifiedGesture);
+
+                if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+                    if (!this.powersManager.domainActive) this.powersManager.clearActivePower();
+                    return;
+                }
+
+                results.multiHandLandmarks.forEach(hand => this.effectsEngine.drawDebugHand(hand));
+                const primaryHandPos = this.effectsEngine.normalizeCoordinates(results.multiHandLandmarks[0][9]);
+
+                if (this.cooldownActive) return;
+
+                switch (this.selectedPower) {
+                    case "rasengan":
+                        if (unifiedGesture === "OPEN_PALM") {
+                            this.powersManager.instantiateRasengan(primaryHandPos);
+                        } else {
+                            this.powersManager.clearActivePower();
+                        }
+                        break;
+                    case "chidori":
+                        if (unifiedGesture === "CLOSED_FIST") {
+                            this.powersManager.instantiateChidori(primaryHandPos);
+                        } else {
+                            this.powersManager.clearActivePower();
+                        }
+                        break;
+                    case "kamehameha":
+                        if (unifiedGesture === "HANDS_TOGETHER" && results.multiHandLandmarks.length >= 2) {
+                            const posL = this.effectsEngine.normalizeCoordinates(results.multiHandLandmarks[0][9]);
+                            const posR = this.effectsEngine.normalizeCoordinates(results.multiHandLandmarks[1][9]);
+                            this.powersManager.instantiateKamehameha(posL, posR);
+                        } else {
+                            this.powersManager.clearActivePower();
+                        }
+                        break;
+                    case "fireball":
+                        if (unifiedGesture === "POINTING") {
+                            this.powersManager.instantiateFireball(primaryHandPos);
+                        } else {
+                            this.powersManager.clearActivePower();
+                        }
+                        break;
+                    case "shadowclone":
+                        if (unifiedGesture === "CROSSED_ARMS") {
+                            this.powersManager.instantiateShadowClone();
+                            this.triggerGlobalCooldown(4000);
+                        }
+                        break;
+                    case "domain":
+                        if (unifiedGesture === "VICTORY") {
+                            this.powersManager.triggerDomainExpansion();
+                            this.triggerGlobalCooldown(8000);
+                        }
+                        break;
+                }
+
+                if (results.multiHandLandmarks.length > 0) {
+                    this.powersManager.updatePosition(primaryHandPos);
+                }
+            }
+
+            triggerGlobalCooldown(durationMs) {
+                this.cooldownActive = true;
+                this.uiSystem.setCooldown(true);
+                setTimeout(() => {
+                    this.cooldownActive = false;
+                    this.uiSystem.setCooldown(false);
+                    this.powersManager.clearActivePower();
+                }, durationMs);
+            }
+
+            captureScreenshot() {
+                const outputCanvas = document.createElement("canvas");
+                const ctx = outputCanvas.getContext("2d");
+                const video = this.cameraSystem.videoElement;
+                
+                outputCanvas.width = video.videoWidth;
+                outputCanvas.height = video.videoHeight;
+
+                ctx.translate(outputCanvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0, outputCanvas.width, outputCanvas.height);
+                
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.drawImage(this.effectsEngine.canvas, 0, 0, outputCanvas.width, outputCanvas.height);
+
+                const dataURL = outputCanvas.toDataURL("image/png");
+                const link = document.createElement("a");
+                link.download = `anime-powers-${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
+            }
+
+            toggleRecording() {
+                const recordBtn = document.getElementById("btn-record");
+                if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+                    this.mediaRecorder.stop();
+                    recordBtn.innerText = "📹 Record";
+                    return;
+                }
+
+                this.recordedChunks = [];
+                const stream = this.effectsEngine.canvas.captureStream(30);
+                
+                this.mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+                this.mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) this.recordedChunks.push(e.data);
+                };
+
+                this.mediaRecorder.onstop = () => {
+                    const blob = new Blob(this.recordedChunks, { type: "video/webm" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.download = `anime-clip-${Date.now()}.webm`;
+                    link.href = url;
+                    link.click();
+                };
+
+                this.mediaRecorder.start();
+                recordBtn.innerText = "🛑 Stop";
+            }
+
+            renderLoop() {
+                requestAnimationFrame(() => this.renderLoop());
+                this.powersManager.updateActiveAnimations();
+                this.effectsEngine.updateAndRender();
+                this.uiSystem.updateFPS();
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const app = new ApplicationOrchestrator();
+            app.start().catch(err => {
+                alert("Failed to initialize AR Application context natively. Check camera permissions.");
+                console.error(err);
+            });
+        });
+    </script>
 </body>
 </html>
